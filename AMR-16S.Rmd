@@ -19,7 +19,7 @@ library(vegan)
 library(knitr)
 library(ALDEx2)
 library(CoDaSeq)
-library(zCompositions)
+library(ANCOMBC)
 library(dplyr)
 library(nloptr)
 writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
@@ -234,4 +234,26 @@ perm<-adonis2(dist.clr~type*frac,as(sample_data(ps),"data.frame"))
 print(perm)
 ```
 
+
+ANCOM-BC
+https://github.com/FrederickHuangLin/ANCOM-BC-Code-Archive
+
+
+
+```{r, echo=FALSE}
+
+otu <- read.table("silva_nochloronomito_otu_table_ps10nb.txt",sep="\t",header=TRUE, row.names=1)
+#transpose OTU table for ANCOM-BC: requires samples in columns and OTUs in rows
+feature.table<-t(otu)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps10nb.txt",sep="\t",header=TRUE,row.names=1)
+meta.data<-read.table("metadata_CLEAN_noblanks.txt",sep="\t",header=T,row.names=1)
+
+feature_table_pre_process(feature.table, meta.data, sample.var, group.var, zero.cut, lib.cut, neg.lb)
+
+
+
+
+
+
+```
 
