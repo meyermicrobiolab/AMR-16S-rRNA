@@ -238,16 +238,15 @@ print(perm)
 
 
 ANCOM-BC
-https://github.com/FrederickHuangLin/ANCOM-BC-Code-Archive
-
+https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
 
 
 ```{r, echo=FALSE}
 # Start by creating phyloseq object using full dataset (low abundance ASVs are not removed). We are using phlyoseq to remove blanks and then group ASVs by Family.
 
-otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_CLEAN.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table_ps10nb.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps10nb.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_CLEAN_noblanks.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -255,26 +254,26 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps
-psnb = subset_samples(ps, colony != "blank") 
-psnb
-get_taxa_unique(psnb, "Family") # 478 families
-psnb_fam <- tax_glom(psnb, "Family") # group ASVs by Family
-psnb_fam # 480 taxa (families) and 50 samples
+ps #174 taxa and 50 samples
 
-# Now put Family abundances and metadata into formats for ANCOM-BC
-datm <- psmelt(psnb_fam) # melt phyloseq object into dataframe
-OTUdf <- reshape2::dcast(datm, Sample ~ Family, value.var = 'Abundance', fun.aggregate = sum) # cast dataframe with only columns needed
-metadf<-read.table("metadata_CLEAN_noblanks.txt",sep="\t",header=T,row.names=1)
-metadf <- tibble::rownames_to_column(metadf, "Sample.ID")
 
-# Step 1: Data preprocessing
+# add more options - see ancombc2 tutorial in bioconductor
+out = ancombc2(data = ps, assay_name = "counts", tax_level = "Genus",
+               fix_formula = "type",
+               rand_formula = NULL,
+               p_adj_method = "BH")
+               
+               
+res = out$res
+out$res 
+write.table(res,file="ancomBC-results-BH-genus-by-treatment.txt")
 
-prepro = feature_table_pre_process(feature_table = OTUdf, meta_data = metadf, sample_var = "Sample.ID", group_var = NULL, out_cut = 0.05, zero_cut = 0.90, lib_cut = 1000, neg_lb = FALSE)
 
-#zero_cut: Taxa with proportion of zeroes greater than zero_cut are not included in the analysis.
-#out_cut: observations with proportion of mixture distribution less than out_cut (or greater than 1- out_cut) will be detected as outliers
 
+```
+
+
+```{r, echo=FALSE}
 
 
 
