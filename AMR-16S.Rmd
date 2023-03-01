@@ -141,46 +141,13 @@ write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA
 ```
 
 
-Now, time to explore the data.
-
-```{r, echo=FALSE}
-ps 
-get_taxa_unique(ps, "Order") #282
-get_taxa_unique(ps, "Class") #117
-ps5<-filter_taxa(ps, function(x) mean(x) >5, TRUE)
-ntaxa(ps5) #288
-ps10<-filter_taxa(ps, function(x) mean(x) >10, TRUE)
-ntaxa(ps10) #174
-get_taxa_unique(ps, "Genus") #887
-get_taxa_unique(ps5, "Genus") #145
-get_taxa_unique(ps10, "Genus") #105
-
-# Now export filtered otu and taxa tables from phyloseq for future reference after removing sample blanks
-ps10 #174 taxa and 52 samples
-ps10nb = subset_samples(ps10, colony != "blank") #remove sample blanks
-ps10nb #174 taxa and 50 samples
-
-otu_ps10nb = as(otu_table(ps10nb), "matrix")
-taxon_ps10nb = as(tax_table(ps10nb), "matrix")
-metadata = as(sample_data(ps10nb), "matrix")
-write.table(otu_ps10nb,"silva_nochloronomito_otu_table_ps10nb.txt",sep="\t",col.names=NA)
-write.table(taxon_ps10nb,"silva_nochloronomito_taxa_table_ps10nb.txt",sep="\t",col.names=NA)
-write.table(metadata,"metadata_CLEAN_noblanks.txt",sep="\t",col.names=NA) 
-
-#relative abundance
-ps10nb_ra<-transform_sample_counts(ps10nb, function(OTU) OTU/sum(OTU))
-otu_ps10nb_ra = as(otu_table(ps10nb_ra), "matrix")
-write.table(otu_ps10nb_ra,"silva_nochloronomito_otu_table_ps10nb_RA.txt",sep="\t",col.names=NA)
-
-```
-
-# Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
+# Now, time to explore the data.
 
 ```{r, echo=FALSE}
 # load in data and create phyloseq object
-otu <- read.table("silva_nochloronomito_otu_table_ps10nb.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps10nb.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_CLEAN_noblanks.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_CLEAN.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -188,8 +155,51 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #174 taxa and 50 samples
+ps # 6138 taxa and 52 samples
+psnb = subset_samples(ps, colony != "blank") #remove sample blanks
+psnb # 6138 taxa and 50 samples
+# remove disease samples to compare before and after amox treatment
+ps1 = subset_samples(psnb, type != "disease") 
+ps1 # 6138 taxa and 35 samples
 
+ps5<-filter_taxa(ps1, function(x) mean(x) >5, TRUE)
+ntaxa(ps5) #112
+ps10<-filter_taxa(ps1, function(x) mean(x) >10, TRUE)
+ntaxa(ps10) #78
+get_taxa_unique(ps1, "Genus") #887
+get_taxa_unique(ps5, "Genus") #61
+get_taxa_unique(ps10, "Genus") #46
+
+# Now export filtered otu and taxa tables from phyloseq for future reference
+otu_ps5 = as(otu_table(ps5), "matrix")
+taxon_ps5 = as(tax_table(ps5), "matrix")
+metadata = as(sample_data(ps5), "matrix")
+write.table(otu_ps5,"silva_nochloronomito_otu_table_ps5.txt",sep="\t",col.names=NA)
+write.table(taxon_ps5,"silva_nochloronomito_taxa_table_ps5.txt",sep="\t",col.names=NA)
+write.table(metadata,"metadata_ps5.txt",sep="\t",col.names=NA) 
+
+#relative abundance
+ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
+otu_ps5_ra = as(otu_table(ps5_ra), "matrix")
+write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.names=NA)
+
+```
+
+# Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
+
+```{r, echo=FALSE}
+# load in data and create phyloseq object
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps5.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps #112 taxa and 35 samples
 
 # First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
 # Also transposing here, need samples as rows
@@ -212,8 +222,8 @@ screeplot(d.pcx)
 # Make a pretty PCA plot with ggplot
 df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
-cols<-c("untreated"="#6CD5D9","antibiotic"="#107A86","disease"="#000000")
-samples$type<-factor(samples$type, levels=c("untreated","antibiotic","disease"))
+cols<-c("untreated"="#6CD5D9","antibiotic"="#107A86")
+samples$type<-factor(samples$type, levels=c("untreated","antibiotic"))
 pdf("PCA.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=5)+
@@ -237,6 +247,7 @@ print(perm)
 ```
 
 
+
 ANCOM-BC
 https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
 
@@ -244,9 +255,9 @@ https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMB
 ```{r, echo=FALSE}
 # Start by creating phyloseq object using full dataset (low abundance ASVs are not removed). We are using phlyoseq to remove blanks and then group ASVs by Family.
 
-otu <- read.table("silva_nochloronomito_otu_table_ps10nb.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps10nb.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_CLEAN_noblanks.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps5.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -254,7 +265,7 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #174 taxa and 50 samples
+ps #112 taxa and 35 samples
 
 
 # add more options - see ancombc2 tutorial in bioconductor
