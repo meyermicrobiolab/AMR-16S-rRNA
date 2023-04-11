@@ -161,6 +161,12 @@ psnb # 6138 taxa and 50 samples
 # remove disease samples to compare before and after amox treatment
 ps1 = subset_samples(psnb, type != "disease") 
 ps1 # 6138 taxa and 35 samples
+otu = as(otu_table(ps1), "matrix")
+taxon = as(tax_table(ps1), "matrix")
+metadata = as(sample_data(ps1), "matrix")
+write.table(otu,"silva_nochloronomito_otu_table_ps1.txt",sep="\t",col.names=NA)
+write.table(taxon,"silva_nochloronomito_taxa_table_ps1.txt",sep="\t",col.names=NA)
+write.table(metadata,"metadata_ps1.txt",sep="\t",col.names=NA)
 
 ps5<-filter_taxa(ps1, function(x) mean(x) >5, TRUE)
 ntaxa(ps5) #112
@@ -226,16 +232,18 @@ cols<-c("untreated"="#6CD5D9","antibiotic"="#107A86")
 samples$type<-factor(samples$type, levels=c("untreated","antibiotic"))
 pdf("PCA.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
-p<-p+geom_point(size=5)+
+p<-p+geom_point(size=3)+
   theme(axis.title = element_text(size=14))+
   theme(axis.text=element_text(size=12))+
   theme(legend.title = element_text(size=14))+
   theme(legend.text = element_text(size=12))+
   scale_shape_manual(values=c(21,22))+
   scale_fill_manual(values=cols)+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  facet_grid(~samples$fraction)
 p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") +coord_fixed()
 dev.off()
+
 ####### Use phyloseq/vegan to perform PERMANOVA
 # set metadata as factors
 type<-as.character(samples$type)
@@ -253,32 +261,39 @@ https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMB
 
 
 ```{r, echo=FALSE}
-# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed). We are using phlyoseq to remove blanks and then group ASVs by Family.
+# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed).
 
-otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_ps5.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
 sampledata = sample_data(samples)
-ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #112 taxa and 35 samples
+ps1 #6138 taxa and 35 samples
 
+set.seed(123)
+output = ancombc2(data = ps1, assay_name = "counts", tax_level = "Genus",
+                  fix_formula = "type", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = FALSE, pairwise = FALSE, 
+                  dunnet = FALSE, trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, 
+                                      verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = NULL, mdfdr_control = NULL, 
+                  trend_control = NULL)
 
-# add more options - see ancombc2 tutorial in bioconductor
-out = ancombc2(data = ps, assay_name = "counts", tax_level = "Genus",
-               fix_formula = "type",
-               rand_formula = NULL,
-               p_adj_method = "BH")
-               
-               
-res = out$res
-out$res 
-write.table(res,file="ancomBC-results-BH-genus-by-treatment.txt")
-
+res_prim = output$res
+output$res
+write.table(res_prim,file="ancomBC-results-BH-genus-by-treatment.txt")
+tab_sens = output$pseudo_sens_tab
 
 
 ```
