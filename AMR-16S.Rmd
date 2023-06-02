@@ -23,6 +23,7 @@ library(ANCOMBC)
 library(dplyr)
 library(nloptr)
 library(tibble)
+library(randomcoloR)
 writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 ```
 
@@ -255,6 +256,96 @@ print(perm)
 ```
 
 
+Stacked bar charts
+```{r, echo=FALSE}
+# load in data and create phyloseq object
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps5.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps #112 taxa and 35 samples
+
+sample_data(ps_ra)$type<-factor(sample_data(ps_ra)$type, levels=c("untreated","antibiotic"))
+
+ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
+get_taxa_unique(ps_ra, "Class") #19
+get_taxa_unique(ps_ra, "Order") #37
+get_taxa_unique(ps_ra, "Family") #53
+get_taxa_unique(ps_ra, "Genus") #61
+
+n <- 19
+palette <- distinctColorPalette(n)
+
+pdf("barchart_Class.pdf",width=11)
+p1=plot_bar(ps_ra, "colony" ,fill="Class")+
+  facet_grid(fraction~type,scales="free",space="free")+
+  geom_bar(aes(fill=Class), stat="identity",position="stack")+
+  theme_bw()+
+  theme(strip.text=element_text(face="bold", size=12))+
+  theme(axis.text.x=element_text(size=12))+
+  theme(axis.text.y=element_text(size=12))+
+  scale_fill_manual(values=palette)+
+  #theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
+
+
+
+
+n <- 37
+palette <- distinctColorPalette(n)
+
+pdf("barchart_Order.pdf",width=11)
+p1=plot_bar(ps_ra, "colony" ,fill="Order")+
+  facet_grid(fraction~type,scales="free",space="free")+
+  geom_bar(aes(fill=Order), stat="identity",position="stack")+
+  theme_bw()+
+  theme(strip.text=element_text(face="bold", size=12))+
+  theme(axis.text.x=element_text(size=12))+
+  theme(axis.text.y=element_text(size=12))+
+  scale_fill_manual(values=palette)+
+  #theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
+
+
+
+n <- 61
+palette <- distinctColorPalette(n)
+
+pdf("barchart_Genus.pdf",width=11)
+p1=plot_bar(ps_ra, "colony" ,fill="Genus")+
+  facet_grid(fraction~type,scales="free",space="free")+
+  geom_bar(aes(fill=Genus), stat="identity",position="stack")+
+  theme_bw()+
+  theme(strip.text=element_text(face="bold", size=12))+
+  theme(axis.text.x=element_text(size=12))+
+  theme(axis.text.y=element_text(size=12))+
+  scale_fill_manual(values=palette)+
+  #theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
+
+
+```
+
+
+
+
+
+
+
+
+
 
 ANCOM-BC
 https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
@@ -298,10 +389,4 @@ tab_sens = output$pseudo_sens_tab
 
 ```
 
-
-```{r, echo=FALSE}
-
-
-
-```
 
