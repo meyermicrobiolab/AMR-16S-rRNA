@@ -280,6 +280,7 @@ get_taxa_unique(ps_ra, "Family") #53
 get_taxa_unique(ps_ra, "Genus") #61
 
 n <- 19
+# after plotting, you can re-run the next line to create a different selection of colors
 palette <- distinctColorPalette(n)
 
 pdf("barchart_Class.pdf",width=11)
@@ -295,7 +296,6 @@ p1=plot_bar(ps_ra, "colony" ,fill="Class")+
   theme(legend.position = "bottom")
 p1
 dev.off()
-
 
 
 
@@ -317,6 +317,22 @@ p1
 dev.off()
 
 
+n <- 53
+palette <- distinctColorPalette(n)
+
+pdf("barchart_Family.pdf",width=11)
+p1=plot_bar(ps_ra, "colony" ,fill="Family")+
+  facet_grid(fraction~type,scales="free",space="free")+
+  geom_bar(aes(fill=Family), stat="identity",position="stack")+
+  theme_bw()+
+  theme(strip.text=element_text(face="bold", size=12))+
+  theme(axis.text.x=element_text(size=12))+
+  theme(axis.text.y=element_text(size=12))+
+  scale_fill_manual(values=palette)+
+  #theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
 
 n <- 61
 palette <- distinctColorPalette(n)
