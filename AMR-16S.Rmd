@@ -104,7 +104,7 @@ write.table(seqtab.nochim, "silva_otu_table.txt",sep="\t",col.names=NA)
 # Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
 otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_CLEAN.txt",sep="\t",header=T,row.names=1)
+samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -148,7 +148,7 @@ write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA
 # load in data and create phyloseq object
 otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_CLEAN.txt",sep="\t",header=T,row.names=1)
+samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)

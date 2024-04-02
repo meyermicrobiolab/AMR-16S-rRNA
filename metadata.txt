@@ -1,53 +1,53 @@
-sample	sample.abr	type 	treatment
-1A.DNA	1A	DNA	antibiotic
-2A.DNA	2A	DNA	antibiotic
-3A.DNA	3A	DNA	antibiotic
-4A.DNA	4A	DNA	antibiotic
-5A.DNA	5A	DNA	antibiotic
-6A.DNA	6A	DNA	antibiotic
-7A.DNA	7A	DNA	antibiotic
-8A.DNA	8A	DNA	antibiotic
-10A.DNA.2	10A	DNA	antibiotic
-1D.DNA	1D	DNA	diseased
-2D.DNA	2D	DNA	diseased
-3D.DNA	3D	DNA	diseased
-4D.DNA	4D	DNA	diseased
-5D.DNA	5D	DNA	diseased
-6D.DNA	6D	DNA	diseased
-7D.DNA.1	7D	DNA	diseased
-8D.DNA	8D	DNA	diseased
-9D.DNA	9D	DNA	diseased
-10D.DNA	10D	DNA	diseased
-1H.DNA	1H	DNA	healthy
-2H.DNA	2H	DNA	healthy
-3H.DNA	3H	DNA	healthy
-4H.DNA	4H	DNA	healthy
-5H.DNA	5H	DNA	healthy
-6H.DNA.2	6H.2	DNA	healthy
-6H.DNA.1	6H.1	DNA	healthy
-7H.DNA	7H	DNA	healthy
-9H.DNA	9H	DNA	healthy
-10H.DNA	10H	DNA	healthy
-1A.RNA	1A	RNA 	antibiotic
-2A.RNA	2A	RNA 	antibiotic
-3A.RNA	3A	RNA 	antibiotic
-5A.RNA	5A	RNA 	antibiotic
-6A.RNA	6A	RNA 	antibiotic
-7A.RNA	7A	RNA 	antibiotic
-8A.RNA	8A	RNA 	antibiotic
-10A.RNA	10A	RNA 	antibiotic
-2D.RNA	2D	RNA 	diseased
-7D.RNA	7D	RNA 	diseased
-8D.RNA	8D	RNA 	diseased
-9D.RNA	9D	RNA 	diseased
-10D.RNA	10D	RNA 	diseased
-1H.RNA	1H	RNA 	healthy
-2H.RNA	2H	RNA 	healthy
-3H.RNA	3H	RNA 	healthy
-4H.RNA	4H	RNA 	healthy
-5H.RNA	5H	RNA 	healthy
-6H.RNA	6H	RNA 	healthy
-7H.RNA	7H	RNA 	healthy
-8H.RNA	8H	RNA 	healthy
-9H.RNA	9H	RNA 	healthy
-10H.RNA	10H	RNA 	healthy
+	colony	tag	fraction	type
+1A-DNA	A	7333	DNA	after
+1A-rna	A	7333	RNA 	after
+1D-DNA	A	7333	DNA	disease
+1H-DNA	A	7333	DNA	before
+1H-rna	A	7333	RNA 	before
+2A-DNA	B	7830	DNA	after
+2A-rna	B	7830	RNA 	after
+2D-DNA	B	7830	DNA	disease
+2D-rna	B	7830	RNA 	disease
+2H-DNA	B	7830	DNA	before
+2H-rna	B	7830	RNA 	before
+Blank-2022-09	blank	blank	blank	blank
+Blank2	blank	blank	blank	blank
+3A-DNA	C	4924	DNA	after
+3A-rna	C	4924	RNA 	after
+3D-DNA	C	4924	DNA	disease
+3H-DNA	C	4924	DNA	before
+4A-DNA	D	7348	DNA	after
+4D-DNA	D	7348	DNA	disease
+4H-DNA	D	7348	DNA	before
+4H-rna	D	7348	RNA 	before
+5A-DNA	E	7829	DNA	after
+5A-rna	E	7829	RNA 	after
+5D-DNA	E	7829	DNA	disease
+5H-DNA	E	7829	DNA	before
+5H-rna	E	7829	RNA 	before
+6A-DNA	F	7875	DNA	after
+6A-rna	F	7875	RNA 	after
+6D-DNA	F	7875	DNA	disease
+6H-DNA	F	7875	DNA	before
+6H-rna	F	7875	RNA 	before
+7A-DNA	G	7335	DNA	after
+7A-rna	G	7335	RNA 	after
+7D-DNA	G	7335	DNA	disease
+7D-rna	G	7335	RNA 	disease
+7H-DNA	G	7335	DNA	before
+7H-rna	G	7335	RNA 	before
+8A-DNA	H	4590	DNA	after
+8A-rna	H	4590	RNA 	after
+8D-DNA	H	4590	DNA	disease
+8D-rna	H	4590	RNA 	disease
+8H-rna	H	4590	RNA 	before
+9D-DNA	I	7828	DNA	disease
+9D-rna	I	7828	RNA 	disease
+9H-DNA	I	7828	DNA	before
+9H-rna	I	7828	RNA 	before
+10A-DNA	J	7872	DNA	after
+10A-rna	J	7872	RNA 	after
+10D-DNA	J	7872	DNA	disease
+10D-rna	J	7872	RNA 	disease
+10H-DNA	J	7872	DNA	before
+10H-rna	J	7872	RNA 	before

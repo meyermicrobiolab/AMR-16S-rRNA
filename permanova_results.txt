@@ -1,25 +1,0 @@
-###### with disease samples
-
-Permutation test for adonis under reduced model
-Terms added sequentially (first to last)
-Permutation: free
-Number of permutations: 999
-
-adonis2(formula = dist.clr ~ type * frac, data = as(sample_data(ps), "data.frame"))
-          Df SumOfSqs      R2       F Pr(>F)    
-type       2    14534 0.33552 12.8305  0.001 ***
-frac       1     2911 0.06721  5.1403  0.001 ***
-type:frac  2      951 0.02196  0.8398  0.599    
-Residual  44    24922 0.57531                   
-Total     49    43319 1.00000                   
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-
-
-
-###### just apparently healthy before and after antibiotic 
-
-Permutation test for adonis under reduced modelTerms added sequentially (first to last)Permutation: freeNumber of permutations: 999adonis2(formula = dist.clr ~ type * frac, data = as(sample_data(ps), "data.frame"))          Df SumOfSqs      R2      F Pr(>F)    type       1   1335.6 0.07314 3.0383  0.013 *  frac       1   2680.6 0.14679 6.0981  0.001 ***type:frac  1    617.8 0.03383 1.4054  0.165    Residual  31  13627.0 0.74624                  Total     34  18260.9 1.00000                  ---Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-
