@@ -210,7 +210,7 @@ ps #112 taxa and 35 samples
 
 # First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
 # Also transposing here, need samples as rows
-d.czm <- cmultRepl(t(otu), method="CZM", label=0)
+d.czm <- cmultRepl(t(otu), method="CZM", label=0, z.warning=1)
 # Perform the center-log-ratio (CLR) transformation 
 d.clr <- codaSeq.clr(d.czm)
 # transpose matrix of CLR transformed data for ordination and dendrogram
@@ -229,8 +229,8 @@ screeplot(d.pcx)
 # Make a pretty PCA plot with ggplot
 df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
-cols<-c("untreated"="#6CD5D9","antibiotic"="#107A86")
-samples$type<-factor(samples$type, levels=c("untreated","antibiotic"))
+cols<-c("before"="#6CD5D9","after"="#107A86")
+samples$type<-factor(samples$type, levels=c("before","after"))
 pdf("PCA.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=3)+
@@ -271,13 +271,13 @@ ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),
                tax_table(taxon))
 ps #112 taxa and 35 samples
 
-sample_data(ps_ra)$type<-factor(sample_data(ps_ra)$type, levels=c("untreated","antibiotic"))
-
 ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
 get_taxa_unique(ps_ra, "Class") #19
 get_taxa_unique(ps_ra, "Order") #37
 get_taxa_unique(ps_ra, "Family") #53
 get_taxa_unique(ps_ra, "Genus") #61
+
+sample_data(ps_ra)$type<-factor(sample_data(ps_ra)$type, levels=c("before","after"))
 
 n <- 19
 # after plotting, you can re-run the next line to create a different selection of colors
