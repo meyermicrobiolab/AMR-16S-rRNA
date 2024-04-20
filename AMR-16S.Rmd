@@ -13,13 +13,12 @@ Load libraries
 
 ```{r, echo=FALSE}
 library(dada2)
+library(CoDaSeq)
 library(ggplot2)
 library(phyloseq)
 library(vegan)
-library(knitr)
-library(ALDEx2)
-library(CoDaSeq)
 library(ANCOMBC)
+library(knitr)
 library(dplyr)
 library(nloptr)
 library(tibble)
@@ -80,7 +79,7 @@ colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
 rownames(track) <- sample.names
 head(track)
 write.table(track, "dada_read_stats.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/AMR-16S-rRNA/seqtab.rds") 
+saveRDS(seqtab.nochim, "~/Documents/Github/AMR-16S-rRNA/seqtab.rds") 
 ```
 
 ## Assign taxonomy in DADA2
@@ -382,9 +381,15 @@ ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),
                tax_table(taxon))
 ps1 #6138 taxa and 35 samples
 
+# ANCOM-BC2 results will be expressed as a relative relationship - it will test variables in the order that they are input. The default in R is alphabetical order, but I want to compare taxa "after" relative to "before", so I need to manually state the order of input.
+sample_data(ps1)$type<-factor(sample_data(ps1)$type,levels=c("before","after"))
+# You can verify the change by checking:
+levels(sample_data(ps1)$type)
+
+
 set.seed(123)
 output = ancombc2(data = ps1, assay_name = "counts", tax_level = "Genus",
-                  fix_formula = "type", rand_formula = NULL,
+                  fix_formula = "fraction + type", rand_formula = NULL,
                   p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
                   prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
                   group = "type", struc_zero = FALSE, neg_lb = FALSE,
@@ -399,8 +404,8 @@ output = ancombc2(data = ps1, assay_name = "counts", tax_level = "Genus",
 
 res_prim = output$res
 output$res
-write.table(res_prim,file="ancomBC-results-BH-genus-by-treatment.txt")
-tab_sens = output$pseudo_sens_tab
+write.table(res_prim,file="ancomBC-results-BH-genus-by-type.txt",sep="\t") # getting "NA" for some taxa - need to find out why it is doing this
+
 
 
 ```
