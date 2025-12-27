@@ -2,16 +2,23 @@
 title: "AMR-16S"
 author: "JM"
 date: "2023-02-19"
-output: html_document
+output:
+  html_document:
+    keep_md: true
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.retina = 2, fig.path = "../figures/16S-fig-")
+setwd("~/Documents/GitHub/AMR-16S-rRNA/")
 ```
 
 Load libraries
 
-```{r, echo=FALSE}
+```{r}
 library(dada2)
 library(CoDaSeq)
 library(ggplot2)
@@ -24,6 +31,7 @@ library(dplyr)
 library(nloptr)
 library(tibble)
 library(randomcoloR)
+library(cowplot)
 writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 ```
 
@@ -32,7 +40,7 @@ writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 Put unjoined R1 and R2 fastq files, with adaptors and primers previously removed with cutadapt into a directory for DADA2. Here, our forward and reverse fastq filenames have format: SAMPLENAME_R1_cut.fastq.gz and SAMPLENAME_R2_cut.fastq.gz
 
 
-```{r, echo=FALSE}
+```{r}
 path <- "~/Documents/Github/AMR-16S-rRNA/cutadapt"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -89,7 +97,7 @@ Make sure the taxonomy reference database is in your working directory. Keep the
 
 When taxonomy assignment is complete, we will use base R and phyloseq to clean up the taxonomy table. First, we will replace NAs and empty cells with the lowest taxonomy classification available. Second, we will use phyloseq to remove reads that are classified as Eukaryotes or unclassified at the domain level (ie, we are keeping only Bacteria and Archaea because that is what our primers target).
 
-```{r, echo=FALSE}
+```{r}
 taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
 # FIX the NAs in the taxa table
 taxon <- as.data.frame(taxa,stringsAsFactors=FALSE)
@@ -125,7 +133,7 @@ ps <- subset_taxa(ps, Kingdom !="NA")
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order") 
 get_taxa_unique(ps, "Kingdom")
-ps  #6138 taxa and 52 samples
+ps
 
 # Now export cleaned otu and taxa tables from phyloseq for future reference
 otu = as(otu_table(ps), "matrix")
@@ -144,7 +152,7 @@ write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA
 
 # Now, time to explore the data.
 
-```{r, echo=FALSE}
+```{r}
 # load in data and create phyloseq object
 otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
@@ -156,12 +164,12 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps # 6138 taxa and 52 samples
+ps # 52 samples
 psnb = subset_samples(ps, colony != "blank") #remove sample blanks
-psnb # 6138 taxa and 50 samples
+psnb # 50 samples
 # remove disease samples to compare before and after amox treatment
 ps1 = subset_samples(psnb, type != "disease") 
-ps1 # 6138 taxa and 35 samples
+ps1 # 35 samples
 otu = as(otu_table(ps1), "matrix")
 taxon = as(tax_table(ps1), "matrix")
 metadata = as(sample_data(ps1), "matrix")
@@ -170,12 +178,12 @@ write.table(taxon,"silva_nochloronomito_taxa_table_ps1.txt",sep="\t",col.names=N
 write.table(metadata,"metadata_ps1.txt",sep="\t",col.names=NA)
 
 ps5<-filter_taxa(ps1, function(x) mean(x) >5, TRUE)
-ntaxa(ps5) #112
+ntaxa(ps5)
 ps10<-filter_taxa(ps1, function(x) mean(x) >10, TRUE)
-ntaxa(ps10) #78
-get_taxa_unique(ps1, "Genus") #887
-get_taxa_unique(ps5, "Genus") #61
-get_taxa_unique(ps10, "Genus") #46
+ntaxa(ps10)
+get_taxa_unique(ps1, "Genus") 
+get_taxa_unique(ps5, "Genus") 
+get_taxa_unique(ps10, "Genus") 
 
 # Now export filtered otu and taxa tables from phyloseq for future reference
 otu_ps5 = as(otu_table(ps5), "matrix")
@@ -192,9 +200,105 @@ write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.
 
 ```
 
-# Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
+# Alpha Diversity on unfiltered dataset
+```{r}
+# load in data for 35 samples, no low abundance taxa removed
+otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps1
 
-```{r, echo=FALSE}
+# calculate alpha diversity measures with phyloseq wrapper
+alpha.diversity <- estimate_richness(ps1, measures = c("Observed","Shannon","Simpson"))
+
+# combine alpha diversity measures with sample metadata
+alpha.diversity <- tibble::rownames_to_column(alpha.diversity, "sample")
+# fix sample names
+alpha.diversity$sample<- gsub("X", "", alpha.diversity$sample)
+alpha.diversity$sample<- gsub(".", "-", alpha.diversity$sample,fixed=TRUE)
+samples <- tibble::rownames_to_column(samples, "sample")
+alpha_meta <- merge(alpha.diversity, samples, by="sample", all=TRUE)
+
+# set aesthetics
+theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+alpha_meta$type<-factor(alpha_meta$type,levels=c("before","after"))
+cols<-c("before"="#6CD5D9","after"="#107A86")
+
+
+# plot box and whiskers with points on top
+obs <- ggplot(alpha_meta,aes(x=type,y=Observed))+
+  geom_boxplot(outlier.shape=NA)+
+  geom_jitter(aes(color=type))+
+  theme(legend.position="none")+
+  theme(axis.title.x=element_blank())+
+  theme(text=element_text(size=14,face="bold"))+
+  scale_color_manual(values=cols)
+
+shan <- ggplot(alpha_meta,aes(x=type,y=Shannon))+
+  geom_boxplot(outlier.shape=NA)+
+  geom_jitter(aes(color=type))+
+  theme(legend.position="none")+
+  theme(axis.title.x=element_blank())+
+  theme(text=element_text(size=14,face="bold"))+
+  scale_color_manual(values=cols)
+
+simp <- ggplot(alpha_meta,aes(x=type,y=Simpson))+
+  geom_boxplot(outlier.shape=NA)+
+  geom_jitter(aes(color=type))+
+  theme(legend.position="none")+
+  theme(axis.title.x=element_blank())+
+  theme(text=element_text(size=14,face="bold"))+
+  scale_color_manual(values=cols)
+
+#pdf("AlphaDiversity.pdf", bg ="white", width=8.5)
+plot_grid(obs,shan,simp, labels=c("A","B","C"), ncol=3)
+#dev.off()
+
+```
+
+
+# Test for statistical differences in alpha diversity.
+
+```{r}
+# First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
+shapiro.test(alpha_meta$Observed) # normality rejected
+# 2-way ANOVA on ranked data for non-normally distributed diversity measures
+anova2 <- aov(rank(Observed) ~ type, alpha_meta) 
+summary(anova2)
+# significant at p=0.01 level
+```
+
+
+```{r}
+# First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
+shapiro.test(alpha_meta$Shannon)
+# 2-way ANOVA test for normally distributed diversity measure - Shannon diversity
+anova1 <- aov(Shannon ~ type, alpha_meta) 
+summary(anova1)
+# not sign. diff.
+```
+
+
+```{r}
+# First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
+shapiro.test(alpha_meta$Simpson) # normality rejected
+# 2-way ANOVA on ranked data for non-normally distributed diversity measures
+anova3 <- aov(rank(Simpson) ~ type, alpha_meta) 
+summary(anova3)
+# not sign. diff.
+```
+
+
+# Beta Diversity (Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components)
+
+```{r}
 # load in data and create phyloseq object
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
@@ -206,7 +310,7 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #112 taxa and 35 samples
+ps
 
 # First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
 # Also transposing here, need samples as rows
@@ -231,7 +335,7 @@ df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
 cols<-c("before"="#6CD5D9","after"="#107A86")
 samples$type<-factor(samples$type, levels=c("before","after"))
-pdf("PCA.pdf",bg ="white",width=8.5)
+#pdf("PCA.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=3)+
   theme(axis.title = element_text(size=14))+
@@ -243,7 +347,7 @@ p<-p+geom_point(size=3)+
   guides(fill = guide_legend(override.aes=list(shape=21)))+
   facet_grid(~samples$fraction)
 p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") +coord_fixed()
-dev.off()
+#dev.off()
 
 ####### Use phyloseq/vegan to perform PERMANOVA
 # set metadata as factors
@@ -251,13 +355,14 @@ type<-as.character(samples$type)
 frac<-as.character(samples$fraction)
 # permanova between groups using Aitchison distance
 dist.clr <- dist(E.clr)
-perm<-adonis2(dist.clr~type*frac,as(sample_data(ps),"data.frame"))
+perm<-adonis2(dist.clr~type*frac,as(sample_data(ps),"data.frame"),by="terms")
 print(perm)
 ```
 
 
+
 Stacked bar charts
-```{r, echo=FALSE}
+```{r}
 # load in data and create phyloseq object
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
@@ -269,13 +374,13 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #112 taxa and 35 samples
+ps
 
 ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
-get_taxa_unique(ps_ra, "Class") #19
-get_taxa_unique(ps_ra, "Order") #37
-get_taxa_unique(ps_ra, "Family") #53
-get_taxa_unique(ps_ra, "Genus") #61
+get_taxa_unique(ps_ra, "Class")
+get_taxa_unique(ps_ra, "Order")
+get_taxa_unique(ps_ra, "Family")
+get_taxa_unique(ps_ra, "Genus")
 
 sample_data(ps_ra)$type<-factor(sample_data(ps_ra)$type, levels=c("before","after"))
 
@@ -283,7 +388,7 @@ n <- 19
 # after plotting, you can re-run the next line to create a different selection of colors
 palette <- distinctColorPalette(n)
 
-pdf("barchart_Class.pdf",width=11)
+#pdf("barchart_Class.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Class")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Class), stat="identity",position="stack")+
@@ -295,14 +400,14 @@ p1=plot_bar(ps_ra, "colony" ,fill="Class")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-dev.off()
+#dev.off()
 
 
 
-n <- 37
+n <- 38
 palette <- distinctColorPalette(n)
 
-pdf("barchart_Order.pdf",width=11)
+#pdf("barchart_Order.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Order")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Order), stat="identity",position="stack")+
@@ -314,13 +419,13 @@ p1=plot_bar(ps_ra, "colony" ,fill="Order")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-dev.off()
+#dev.off()
 
 
 n <- 53
 palette <- distinctColorPalette(n)
 
-pdf("barchart_Family.pdf",width=11)
+#pdf("barchart_Family.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Family")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Family), stat="identity",position="stack")+
@@ -332,12 +437,12 @@ p1=plot_bar(ps_ra, "colony" ,fill="Family")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-dev.off()
+#dev.off()
 
 n <- 61
 palette <- distinctColorPalette(n)
 
-pdf("barchart_Genus.pdf",width=11)
+#pdf("barchart_Genus.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Genus")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Genus), stat="identity",position="stack")+
@@ -349,135 +454,16 @@ p1=plot_bar(ps_ra, "colony" ,fill="Genus")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-dev.off()
+#dev.off()
 
 
 ```
-
-
-
-
-
-
-
-
-
-Differential abundance testing using ANCOM-BC
-https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
-
-
-```{r, echo=FALSE}
-# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed).
-
-otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
-OTU = otu_table(otu, taxa_are_rows=FALSE)
-taxon<-as.matrix(taxon)
-TAX = tax_table(taxon)
-sampledata = sample_data(samples)
-ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
-               sample_data(samples), 
-               tax_table(taxon))
-ps1 #6138 taxa and 35 samples
-
-# prune empty rows
-ps_qf <- prune_taxa(taxa_sums(ps1) > 1, ps1) 
-ps_qf # 1853 taxa and 35 samples
-
-
-# ANCOM-BC2 results will be expressed as a relative relationship - it will test variables in the order that they are input. The default in R is alphabetical order, but I want to compare taxa "after" relative to "before", so I need to manually state the order of input.
-sample_data(ps_qf)$type<-factor(sample_data(ps_qf)$type,levels=c("before","after"))
-# You can verify the change by checking:
-levels(sample_data(ps_qf)$type)
-
-set.seed(123)
-output = ancombc2(data = ps_qf, assay_name = "counts", tax_level = "Genus",
-                  fix_formula = "fraction + type", rand_formula = NULL,
-                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
-                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
-                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
-                  alpha = 0.05, n_cl = 2, verbose = TRUE,
-                  global = FALSE, pairwise = FALSE, 
-                  dunnet = FALSE, trend = FALSE,
-                  iter_control = list(tol = 1e-5, max_iter = 20, 
-                                      verbose = FALSE),
-                  em_control = list(tol = 1e-5, max_iter = 100),
-                  lme_control = NULL, mdfdr_control = NULL, 
-                  trend_control = NULL)
-
-res_prim = output$res
-# nothing significantly different after treatment relative to before
-
-
-# Subset and test DNA fraction
-ps_dna <- subset_samples(ps_qf, fraction == "DNA")
-ps_dna # 1853 taxa and 18 samples
-# prune empty rows
-ps_dna_qf <- prune_taxa(taxa_sums(ps_dna) > 1, ps_dna) 
-ps_dna_qf # 1170 taxa and 18 samples
-
-sample_data(ps_dna_qf)$type<-factor(sample_data(ps_dna_qf)$type,levels=c("before","after"))
-# You can verify the change by checking:
-levels(sample_data(ps_dna_qf)$type)
-
-set.seed(123)
-output = ancombc2(data = ps_dna_qf, assay_name = "counts", tax_level = "Genus",
-                  fix_formula = "type", rand_formula = NULL,
-                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
-                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
-                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
-                  alpha = 0.05, n_cl = 2, verbose = TRUE,
-                  global = FALSE, pairwise = FALSE, 
-                  dunnet = FALSE, trend = FALSE,
-                  iter_control = list(tol = 1e-5, max_iter = 20, 
-                                      verbose = FALSE),
-                  em_control = list(tol = 1e-5, max_iter = 100),
-                  lme_control = NULL, mdfdr_control = NULL, 
-                  trend_control = NULL)
-res_prim_dna = output$res
-# nothing significantly different after treatment relative to before
-
-
-
-# Subset and test RNA fraction
-ps_rna <- subset_samples(ps_qf, fraction == "RNA")
-ps_rna # 1853 taxa and 17 samples
-# prune empty rows
-ps_rna_qf <- prune_taxa(taxa_sums(ps_rna) > 1, ps_rna) 
-ps_rna_qf # 888 taxa and 17 samples
-
-sample_data(ps_rna_qf)$type<-factor(sample_data(ps_rna_qf)$type,levels=c("before","after"))
-# You can verify the change by checking:
-levels(sample_data(ps_rna_qf)$type)
-
-set.seed(123)
-output = ancombc2(data = ps_rna_qf, assay_name = "counts", tax_level = "Genus",
-                  fix_formula = "type", rand_formula = NULL,
-                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
-                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
-                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
-                  alpha = 0.05, n_cl = 2, verbose = TRUE,
-                  global = FALSE, pairwise = FALSE, 
-                  dunnet = FALSE, trend = FALSE,
-                  iter_control = list(tol = 1e-5, max_iter = 20, 
-                                      verbose = FALSE),
-                  em_control = list(tol = 1e-5, max_iter = 100),
-                  lme_control = NULL, mdfdr_control = NULL, 
-                  trend_control = NULL)
-res_prim_rna = output$res
-# nothing significantly different after treatment relative to before
-
-
-```
-
-
 
 
 Differential abundance testing using Corncob
 
 
-```{r, echo=FALSE}
+```{r}
 # use an ASV table that has been filtered to remove low-abundance ASVs, no blanks
 
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
@@ -490,7 +476,7 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps # 112 taxa and 35 samples
+ps
 
 # DA determined relative to first reference level. The default in R is alphabetical order, but I want to compare taxa "after" relative to "before", so I need to manually state the order of input.
 sample_data(ps)$type<-factor(sample_data(ps)$type,levels=c("before","after"))
@@ -517,6 +503,179 @@ plot(treatment.da, c("Family", "Genus"))
 
 
 ```
+
+
+
+
+
+
+
+Differential abundance testing using ANCOM-BC
+https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
+
+
+```{r}
+# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed).
+
+otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps1
+
+# prune empty rows
+ps_qf <- prune_taxa(taxa_sums(ps1) > 1, ps1) 
+ps_qf
+
+
+# ANCOM-BC2 results will be expressed as a relative relationship - it will test variables in the order that they are input. The default in R is alphabetical order, but I want to compare taxa "after" relative to "before", so I need to manually state the order of input.
+sample_data(ps_qf)$type<-factor(sample_data(ps_qf)$type,levels=c("before","after"))
+# You can verify the change by checking:
+levels(sample_data(ps_qf)$type)
+
+set.seed(123)
+output = ancombc2(data = ps_qf, assay_name = "counts", tax_level = "Genus",
+                  fix_formula = "fraction + type", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = FALSE, pairwise = FALSE, 
+                  dunnet = FALSE, trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, 
+                                      verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = NULL, mdfdr_control = NULL, 
+                  trend_control = NULL)
+
+res_prim = output$res
+print(res_prim)
+# nothing significantly different after treatment relative to before (column "diff_typeafter"=TRUE AND column "passed_ss_typeafter"=TRUE); One ASV was likely a false positive (column "diff_typeafter"=TRUE AND column "passed_ss_typeafter"=FALSE)
+```
+
+
+
+Differential abundance testing using ANCOM-BC: DNA fraction only
+https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
+
+
+```{r}
+# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed).
+otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps1
+
+# prune empty rows
+ps_qf <- prune_taxa(taxa_sums(ps1) > 1, ps1) 
+ps_qf
+
+# Subset and test DNA fraction
+ps_dna <- subset_samples(ps_qf, fraction == "DNA")
+ps_dna 
+# prune empty rows
+ps_dna_qf <- prune_taxa(taxa_sums(ps_dna) > 1, ps_dna) 
+ps_dna_qf
+
+sample_data(ps_dna_qf)$type<-factor(sample_data(ps_dna_qf)$type,levels=c("before","after"))
+# You can verify the change by checking:
+levels(sample_data(ps_dna_qf)$type)
+
+set.seed(123)
+output = ancombc2(data = ps_dna_qf, assay_name = "counts", tax_level = "Genus",
+                  fix_formula = "type", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = FALSE, pairwise = FALSE, 
+                  dunnet = FALSE, trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, 
+                                      verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = NULL, mdfdr_control = NULL, 
+                  trend_control = NULL)
+res_prim_dna = output$res
+print(res_prim_dna)
+# nothing significantly different after treatment relative to before (all taxa are FALSE for column "diff_typeafter")
+
+
+```
+Differential abundance testing using ANCOM-BC: RNA fraction only
+https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
+
+
+```{r}
+# Start by creating phyloseq object using full dataset (low abundance ASVs are not removed).
+
+otu <- read.table("silva_nochloronomito_otu_table_ps1.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps1.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_ps1.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps1 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps1
+
+# prune empty rows
+ps_qf <- prune_taxa(taxa_sums(ps1) > 1, ps1) 
+ps_qf
+
+# Subset and test RNA fraction
+ps_qf
+ps_rna <- subset_samples(ps_qf, fraction == "RNA")
+ps_rna 
+# prune empty rows
+ps_rna_qf <- prune_taxa(taxa_sums(ps_rna) > 1, ps_rna) 
+ps_rna_qf
+
+sample_data(ps_rna_qf)$type<-factor(sample_data(ps_rna_qf)$type,levels=c("before","after"))
+# You can verify the change by checking:
+levels(sample_data(ps_rna_qf)$type)
+
+set.seed(123)
+output = ancombc2(data = ps_rna_qf, assay_name = "counts", tax_level = "Genus",
+                  fix_formula = "type", rand_formula = NULL,
+                  p_adj_method = "holm", pseudo = 0, pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "type", struc_zero = FALSE, neg_lb = FALSE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = FALSE, pairwise = FALSE, 
+                  dunnet = FALSE, trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, 
+                                      verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = NULL, mdfdr_control = NULL, 
+                  trend_control = NULL)
+res_prim_rna = output$res
+print(res_prim_rna)
+# nothing significantly different after treatment relative to before (all taxa are FALSE for column "diff_typeafter")
+
+```
+
+
+
+
+
+
+
+
 
 
 
