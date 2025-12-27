@@ -235,31 +235,34 @@ cols<-c("before"="#6CD5D9","after"="#107A86")
 # plot box and whiskers with points on top
 obs <- ggplot(alpha_meta,aes(x=type,y=Observed))+
   geom_boxplot(outlier.shape=NA)+
-  geom_jitter(aes(color=type))+
+  geom_jitter(aes(fill=type,shape=fraction))+
   theme(legend.position="none")+
   theme(axis.title.x=element_blank())+
   theme(text=element_text(size=14,face="bold"))+
-  scale_color_manual(values=cols)
+  scale_shape_manual(values=c(21,22))+
+  scale_fill_manual(values=cols)
 
 shan <- ggplot(alpha_meta,aes(x=type,y=Shannon))+
   geom_boxplot(outlier.shape=NA)+
-  geom_jitter(aes(color=type))+
+  geom_jitter(aes(fill=type,shape=fraction))+
   theme(legend.position="none")+
   theme(axis.title.x=element_blank())+
   theme(text=element_text(size=14,face="bold"))+
-  scale_color_manual(values=cols)
+  scale_shape_manual(values=c(21,22))+
+  scale_fill_manual(values=cols)
 
 simp <- ggplot(alpha_meta,aes(x=type,y=Simpson))+
   geom_boxplot(outlier.shape=NA)+
-  geom_jitter(aes(color=type))+
+  geom_jitter(aes(fill=type,shape=fraction))+
   theme(legend.position="none")+
   theme(axis.title.x=element_blank())+
   theme(text=element_text(size=14,face="bold"))+
-  scale_color_manual(values=cols)
+  scale_shape_manual(values=c(21,22))+
+  scale_fill_manual(values=cols)
 
-#pdf("AlphaDiversity.pdf", bg ="white", width=8.5)
+pdf("AlphaDiversity.pdf", bg ="white", width=8,height=4)
 plot_grid(obs,shan,simp, labels=c("A","B","C"), ncol=3)
-#dev.off()
+dev.off()
 
 ```
 
@@ -335,7 +338,7 @@ df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
 cols<-c("before"="#6CD5D9","after"="#107A86")
 samples$type<-factor(samples$type, levels=c("before","after"))
-#pdf("PCA.pdf",bg ="white",width=8.5)
+pdf("PCA.pdf",bg ="white",width=8, height=4)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=3)+
   theme(axis.title = element_text(size=14))+
@@ -345,9 +348,12 @@ p<-p+geom_point(size=3)+
   scale_shape_manual(values=c(21,22))+
   scale_fill_manual(values=cols)+
   guides(fill = guide_legend(override.aes=list(shape=21)))+
-  facet_grid(~samples$fraction)
-p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") +coord_fixed()
-#dev.off()
+  facet_grid(~samples$fraction)+
+  ylim(-35,35)+
+  xlim(-35,35)+
+  coord_fixed(ratio=1)
+p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") 
+dev.off()
 
 ####### Use phyloseq/vegan to perform PERMANOVA
 # set metadata as factors
