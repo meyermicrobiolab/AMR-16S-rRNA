@@ -273,9 +273,14 @@ dev.off()
 # First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
 shapiro.test(alpha_meta$Observed) # normality rejected
 # 2-way ANOVA on ranked data for non-normally distributed diversity measures
-anova2 <- aov(rank(Observed) ~ type, alpha_meta) 
-summary(anova2)
+anova1 <- aov(rank(Observed) ~ type, alpha_meta) 
+summary(anova1)
 # significant at p=0.01 level
+
+anova2 <- aov(rank(Observed) ~ fraction, alpha_meta) 
+summary(anova2)
+# n.s.
+
 ```
 
 
@@ -283,9 +288,14 @@ summary(anova2)
 # First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
 shapiro.test(alpha_meta$Shannon)
 # 2-way ANOVA test for normally distributed diversity measure - Shannon diversity
-anova1 <- aov(Shannon ~ type, alpha_meta) 
-summary(anova1)
+anova3 <- aov(Shannon ~ type, alpha_meta) 
+summary(anova3)
 # not sign. diff.
+
+anova4 <- aov(Shannon ~ fraction, alpha_meta) 
+summary(anova4)
+# significant at p=0.01 level
+
 ```
 
 
@@ -293,9 +303,13 @@ summary(anova1)
 # First test for normality using Shapiro test. If the value of p is equal to or less than 0.05, then the hypothesis of normality will be rejected. 
 shapiro.test(alpha_meta$Simpson) # normality rejected
 # 2-way ANOVA on ranked data for non-normally distributed diversity measures
-anova3 <- aov(rank(Simpson) ~ type, alpha_meta) 
-summary(anova3)
+anova5 <- aov(rank(Simpson) ~ type, alpha_meta) 
+summary(anova5)
 # not sign. diff.
+
+anova6 <- aov(rank(Simpson) ~ fraction, alpha_meta) 
+summary(anova6)
+# significant at p=0.01 level
 ```
 
 
