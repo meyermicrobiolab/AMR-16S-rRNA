@@ -1,7 +1,7 @@
 ---
-title: "AMR-16S"
+title: "AMR-16S_postDADA"
 author: "JM"
-date: "2023-02-19"
+date: "2026-01-04"
 output:
   html_document:
     keep_md: true
@@ -35,122 +35,7 @@ library(cowplot)
 writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 ```
 
-## Quality-filter the sequencing reads and create Amplicon Sequence Variant (ASV) tables with DADA2
-
-Put unjoined R1 and R2 fastq files, with adaptors and primers previously removed with cutadapt into a directory for DADA2. Here, our forward and reverse fastq filenames have format: SAMPLENAME_R1_cut.fastq.gz and SAMPLENAME_R2_cut.fastq.gz
-
-
-```{r}
-path <- "~/Documents/Github/AMR-16S-rRNA/cutadapt"
-list.files(path)
-fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
-# Perform filtering and trimming
-filt_path <- file.path(path, "filtered") 
-filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-head(out)
-# Learn the Error Rates, it TAKES TIME!
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-# Dereplicate the filtered fastq files
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
-# Infer the sequence variants in each sample
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
-dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
-# Inspecting the dada-class object returned by dada:
-dadaFs[[1]]
-# Merge the denoised forward and reverse reads:
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-# Inspect the merger data.frame from the first sample
-head(mergers[[1]])
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-#Remove chimeric sequences:
-seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
-dim(seqtab.nochim)
-sum(seqtab.nochim)/sum(seqtab)
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-# Track reads through the pipeline
-getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
-colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
-rownames(track) <- sample.names
-head(track)
-write.table(track, "dada_read_stats.txt",sep="\t",col.names=NA)
-saveRDS(seqtab.nochim, "~/Documents/Github/AMR-16S-rRNA/seqtab.rds") 
-```
-
-## Assign taxonomy in DADA2
-
-Make sure the taxonomy reference database is in your working directory. Keep the database file gzipped. Adjust path name below. This step is very time consuming.
-
-When taxonomy assignment is complete, we will use base R and phyloseq to clean up the taxonomy table. First, we will replace NAs and empty cells with the lowest taxonomy classification available. Second, we will use phyloseq to remove reads that are classified as Eukaryotes or unclassified at the domain level (ie, we are keeping only Bacteria and Archaea because that is what our primers target).
-
-```{r}
-taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
-# FIX the NAs in the taxa table
-taxon <- as.data.frame(taxa,stringsAsFactors=FALSE)
-taxon$Phylum[is.na(taxon$Phylum)] <- taxon$Kingdom[is.na(taxon$Phylum)]
-taxon$Class[is.na(taxon$Class)] <- taxon$Phylum[is.na(taxon$Class)]
-taxon$Order[is.na(taxon$Order)] <- taxon$Class[is.na(taxon$Order)]
-taxon$Family[is.na(taxon$Family)] <- taxon$Order[is.na(taxon$Family)]
-taxon$Genus[is.na(taxon$Genus)] <- taxon$Family[is.na(taxon$Genus)]
-write.table(taxon,"silva_taxa_table.txt",sep="\t",col.names=NA)
-write.table(seqtab.nochim, "silva_otu_table.txt",sep="\t",col.names=NA)
-
-# Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
-otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
-OTU = otu_table(otu, taxa_are_rows=FALSE)
-taxon<-as.matrix(taxon)
-TAX = tax_table(taxon)
-sampledata = sample_data(samples)
-ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
-               sample_data(samples), 
-               tax_table(taxon))
-ps 
-
-# remove chloroplasts and mitochondria and Eukaryota
-get_taxa_unique(ps, "Family")
-get_taxa_unique(ps, "Order")
-get_taxa_unique(ps, "Kingdom")
-ps <- subset_taxa(ps, Family !="Mitochondria")
-ps <- subset_taxa(ps, Order !="Chloroplast")
-ps <- subset_taxa(ps, Kingdom !="Eukaryota")
-ps <- subset_taxa(ps, Kingdom !="NA")
-get_taxa_unique(ps, "Family")
-get_taxa_unique(ps, "Order") 
-get_taxa_unique(ps, "Kingdom")
-ps
-
-# Now export cleaned otu and taxa tables from phyloseq for future reference
-otu = as(otu_table(ps), "matrix")
-taxon = as(tax_table(ps), "matrix")
-metadata = as(sample_data(ps), "matrix")
-write.table(otu,"silva_nochloronomito_otu_table.txt",sep="\t",col.names=NA)
-write.table(taxon,"silva_nochloronomito_taxa_table.txt",sep="\t",col.names=NA)
-
-# export ASV table as relative abundance
-ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
-otu_ra = as(otu_table(ps_ra), "matrix")
-write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA)
-
-```
-
-
-# Now, time to explore the data.
+# Read in ASV table, taxonomy table, and metadata to create phyloseq object.
 
 ```{r}
 # load in data and create phyloseq object
@@ -260,9 +145,9 @@ simp <- ggplot(alpha_meta,aes(x=type,y=Simpson))+
   scale_shape_manual(values=c(21,22))+
   scale_fill_manual(values=cols)
 
-pdf("AlphaDiversity.pdf", bg ="white", width=8,height=4)
+#pdf("AlphaDiversity.pdf", bg ="white", width=8,height=4)
 plot_grid(obs,shan,simp, labels=c("A","B","C"), ncol=3)
-dev.off()
+#dev.off()
 
 ```
 
@@ -282,6 +167,7 @@ summary(anova2)
 # n.s.
 
 ```
+
 
 
 ```{r}
@@ -311,7 +197,6 @@ anova6 <- aov(rank(Simpson) ~ fraction, alpha_meta)
 summary(anova6)
 # significant at p=0.01 level
 ```
-
 
 # Beta Diversity (Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components)
 
@@ -352,7 +237,7 @@ df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
 cols<-c("before"="#6CD5D9","after"="#107A86")
 samples$type<-factor(samples$type, levels=c("before","after"))
-pdf("PCA.pdf",bg ="white",width=8, height=4)
+#pdf("PCA.pdf",bg ="white",width=8, height=4)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=3)+
   theme(axis.title = element_text(size=14))+
@@ -367,7 +252,7 @@ p<-p+geom_point(size=3)+
   xlim(-35,35)+
   coord_fixed(ratio=1)
 p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") 
-dev.off()
+#dev.off()
 
 ####### Use phyloseq/vegan to perform PERMANOVA
 # set metadata as factors
@@ -526,10 +411,6 @@ plot(treatment.da, c("Family", "Genus"))
 
 
 
-
-
-
-
 Differential abundance testing using ANCOM-BC
 https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
 
@@ -576,9 +457,9 @@ output = ancombc2(data = ps_qf, assay_name = "counts", tax_level = "Genus",
 
 res_prim = output$res
 print(res_prim)
+write.table(res_prim,"ANCOM-BC2_all.txt",sep="\t",col.names=NA)
 # nothing significantly different after treatment relative to before (column "diff_typeafter"=TRUE AND column "passed_ss_typeafter"=TRUE); One ASV was likely a false positive (column "diff_typeafter"=TRUE AND column "passed_ss_typeafter"=FALSE)
 ```
-
 
 
 Differential abundance testing using ANCOM-BC: DNA fraction only
@@ -630,10 +511,13 @@ output = ancombc2(data = ps_dna_qf, assay_name = "counts", tax_level = "Genus",
                   trend_control = NULL)
 res_prim_dna = output$res
 print(res_prim_dna)
+write.table(res_prim_dna,"ANCOM-BC2_DNA.txt",sep="\t",col.names=NA)
 # nothing significantly different after treatment relative to before (all taxa are FALSE for column "diff_typeafter")
 
 
 ```
+
+
 Differential abundance testing using ANCOM-BC: RNA fraction only
 https://bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
 
@@ -685,17 +569,8 @@ output = ancombc2(data = ps_rna_qf, assay_name = "counts", tax_level = "Genus",
                   trend_control = NULL)
 res_prim_rna = output$res
 print(res_prim_rna)
+write.table(res_prim_rna,"ANCOM-BC2_RNA.txt",sep="\t",col.names=NA)
 # nothing significantly different after treatment relative to before (all taxa are FALSE for column "diff_typeafter")
 
 ```
-
-
-
-
-
-
-
-
-
-
 
