@@ -66,9 +66,9 @@ ps5<-filter_taxa(ps1, function(x) mean(x) >5, TRUE)
 ntaxa(ps5)
 ps10<-filter_taxa(ps1, function(x) mean(x) >10, TRUE)
 ntaxa(ps10)
-get_taxa_unique(ps1, "Genus") 
-get_taxa_unique(ps5, "Genus") 
-get_taxa_unique(ps10, "Genus") 
+#get_taxa_unique(ps1, "Genus") 
+#get_taxa_unique(ps5, "Genus") 
+#get_taxa_unique(ps10, "Genus") 
 
 # Now export filtered otu and taxa tables from phyloseq for future reference
 otu_ps5 = as(otu_table(ps5), "matrix")
@@ -145,9 +145,9 @@ simp <- ggplot(alpha_meta,aes(x=type,y=Simpson))+
   scale_shape_manual(values=c(21,22))+
   scale_fill_manual(values=cols)
 
-#pdf("AlphaDiversity.pdf", bg ="white", width=8,height=4)
+pdf("AlphaDiversity.pdf", bg ="white", width=8,height=4)
 plot_grid(obs,shan,simp, labels=c("A","B","C"), ncol=3)
-#dev.off()
+dev.off()
 
 ```
 
@@ -161,6 +161,10 @@ shapiro.test(alpha_meta$Observed) # normality rejected
 anova1 <- aov(rank(Observed) ~ type, alpha_meta) 
 summary(anova1)
 # significant at p=0.01 level
+
+obs.mean <- alpha_meta %>%
+  group_by(type) %>%
+  summarise_at(vars(Observed), list(name = mean))
 
 anova2 <- aov(rank(Observed) ~ fraction, alpha_meta) 
 summary(anova2)
@@ -237,7 +241,7 @@ df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
 cols<-c("before"="#6CD5D9","after"="#107A86")
 samples$type<-factor(samples$type, levels=c("before","after"))
-#pdf("PCA.pdf",bg ="white",width=8, height=4)
+pdf("PCA.pdf",bg ="white",width=8, height=4)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$type,shape=samples$fraction))
 p<-p+geom_point(size=3)+
   theme(axis.title = element_text(size=14))+
@@ -252,7 +256,7 @@ p<-p+geom_point(size=3)+
   xlim(-35,35)+
   coord_fixed(ratio=1)
 p + labs(x=xlab, y=ylab, fill="Type",shape="Fraction") 
-#dev.off()
+dev.off()
 
 ####### Use phyloseq/vegan to perform PERMANOVA
 # set metadata as factors
@@ -293,7 +297,7 @@ n <- 19
 # after plotting, you can re-run the next line to create a different selection of colors
 palette <- distinctColorPalette(n)
 
-#pdf("barchart_Class.pdf",width=11)
+pdf("barchart_Class.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Class")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Class), stat="identity",position="stack")+
@@ -305,14 +309,14 @@ p1=plot_bar(ps_ra, "colony" ,fill="Class")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-#dev.off()
+dev.off()
 
 
 
 n <- 38
 palette <- distinctColorPalette(n)
 
-#pdf("barchart_Order.pdf",width=11)
+pdf("barchart_Order.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Order")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Order), stat="identity",position="stack")+
@@ -324,13 +328,13 @@ p1=plot_bar(ps_ra, "colony" ,fill="Order")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-#dev.off()
+dev.off()
 
 
 n <- 53
 palette <- distinctColorPalette(n)
 
-#pdf("barchart_Family.pdf",width=11)
+pdf("barchart_Family.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Family")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Family), stat="identity",position="stack")+
@@ -342,12 +346,12 @@ p1=plot_bar(ps_ra, "colony" ,fill="Family")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-#dev.off()
+dev.off()
 
 n <- 61
 palette <- distinctColorPalette(n)
 
-#pdf("barchart_Genus.pdf",width=11)
+pdf("barchart_Genus.pdf",width=11)
 p1=plot_bar(ps_ra, "colony" ,fill="Genus")+
   facet_grid(fraction~type,scales="free",space="free")+
   geom_bar(aes(fill=Genus), stat="identity",position="stack")+
@@ -359,7 +363,7 @@ p1=plot_bar(ps_ra, "colony" ,fill="Genus")+
   #theme(axis.title.x = element_blank())+
   theme(legend.position = "bottom")
 p1
-#dev.off()
+dev.off()
 
 
 ```
